@@ -17,12 +17,11 @@ function UpdateRuntimeVars(optional Canvas Canvas)
     CachedScreenWidth = Canvas.SizeX;
     CachedScreenHeight = Canvas.SizeY;
 
-	GetCanvasFont();
-    Canvas.Font = GetCanvasFont();
+    Canvas.Font = GetCanvasFont(self, HUD);
     R.ResScale = class'FriendlyHUD.FriendlyHUDHelper'.static.GetResolutionScale(Canvas);
     R.Scale = R.ResScale * HUDConfig.Scale;
 
-    R.NameScale = GetCanvasFontScale() * HUDConfig.NameScale * R.Scale;
+    R.NameScale = GetCanvasFontScale(self, HUD) * HUDConfig.NameScale * R.Scale;
     Canvas.TextSize(ASCIICharacters, Temp, R.TextHeight, R.NameScale, R.NameScale);
 
     R.BuffOffset = HUDConfig.BuffOffset * R.Scale;
@@ -255,12 +254,12 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
         PlayerNamePosX += R.FriendIconSize + R.FriendIconGap;
     }
 	
-	if( GetPlayerIsChatting(KFPRI) )
+	if( GetPlayerIsChatting(self, KFPRI, HUD) )
 	{
 		ChatIconPosX = PlayerNamePosX;
 		ChatIconPosY = PosY + FMax(R.LineHeight - R.TextHeight, 0);
 		
-		DrawPlayerChatIcon(KFPRI, Canvas, ChatIconPosX, ChatIconPosY, PlayerNamePosX);
+		DrawPlayerChatIcon(self, KFPRI, HUD, Canvas, ChatIconPosX, ChatIconPosY, PlayerNamePosX);
 	}
 	
 	if( KFPRI.Avatar != None )
@@ -285,7 +284,7 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 			KFPRI.Avatar = FindAvatar(KFPRI.UniqueId);
 	}
 
-	if( !OverridePlayerNameDraw(KFPRI, Canvas, PlayerNamePosX, PlayerNamePosY, PlayerName, TextFontRenderInfo) )
+	if( !OverridePlayerNameDraw(self, KFPRI, HUD, Canvas, PlayerNamePosX, PlayerNamePosY, PlayerName, TextFontRenderInfo, ItemInfo) )
 	{
 		// Draw drop shadow behind the player name
 		SetCanvasColor(Canvas, HUDConfig.ShadowColor);
@@ -631,7 +630,7 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
 
     if( IsPlayerIcon && PrestigeLevel > 0 )
     {
-		PrestigeIcon = GetPrestigeIcon(KFPRI, PrestigeLevel);
+		PrestigeIcon = GetPrestigeIcon(self, HUD, KFPRI, PrestigeLevel);
 		
         Canvas.DrawTile(PrestigeIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, 256, 256);
         Canvas.SetPos(PlayerIconPosX + (R.PlayerIconSize * (1 - PrestigeIconScale)) / 2.f, PlayerIconPosY + R.PlayerIconSize * 0.05f);
@@ -676,7 +675,7 @@ function bool IsPRIRenderable(FriendlyHUDReplicationInfo RepInfo, int RepIndex)
     return true;
 }
 
-delegate Texture2D GetPrestigeIcon(KFPlayerReplicationInfo KFPRI, byte PrestigeLevel)
+delegate Texture2D GetPrestigeIcon(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterface, KFPlayerReplicationInfo KFPRI, byte PrestigeLevel)
 {
 	return KFPRI.CurrentPerkClass.default.PrestigeIcons[PrestigeLevel - 1];
 }
@@ -726,16 +725,27 @@ delegate int SortKFPRIByRegenHealth(PRIEntry A, PRIEntry B)
     return Super.SortKFPRIByRegenHealth(A, B);
 }
 
-delegate bool OverridePlayerNameDraw(KFPlayerReplicationInfo KFPRI, Canvas Canvas, float PlayerNamePosX, float PlayerNamePosY, string PlayerName, FontRenderInfo TextFontRenderInfo);
-delegate bool GetPlayerIsChatting(KFPlayerReplicationInfo KFPRI);
-delegate DrawPlayerChatIcon(KFPlayerReplicationInfo KFPRI, Canvas Canvas, float ChatIconPosX, float ChatIconPosY, out float PlayerNamePosX);
+delegate bool OverridePlayerNameDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float PlayerNamePosX, float PlayerNamePosY, string PlayerName, FontRenderInfo TextFontRenderInfo, const PlayerItemInfo ItemInfo)
+{
+	return false;
+}
 
-delegate Font GetCanvasFont()
+delegate bool GetPlayerIsChatting(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
+{
+	return false;
+}
+
+delegate DrawPlayerChatIcon(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float ChatIconPosX, float ChatIconPosY, out float PlayerNamePosX)
+{
+	return;
+}
+
+delegate Font GetCanvasFont(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterface)
 {
 	return class'KFGameEngine'.static.GetKFCanvasFont();
 }
 
-delegate float GetCanvasFontScale()
+delegate float GetCanvasFontScale(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterface)
 {
 	return class'KFGameEngine'.static.GetKFFontScale();
 }
