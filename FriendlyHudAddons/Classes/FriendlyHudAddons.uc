@@ -52,6 +52,8 @@ simulated function PostBeginPlay()
 		if( iVersionNum != OldVersionNum )
 			SaveConfig();
 			
+		RepInteractionClassName = InteractionClassName;
+			
 		InteractionClass = class<FriendlyHUDInteraction>(DynamicLoadObject(InteractionClassName, class'Class'));
 		ReplicationInfoClass = class<FriendlyHUDReplicationInfo>(DynamicLoadObject(ReplicationInfoClassName, class'Class'));
 		
@@ -112,11 +114,15 @@ simulated function InitializeDeferred()
     else PrintNotification();
 
     KFPC.ConsoleCommand("exec cfg/OnLoadFHUD.cfg", false);
+	
+	OnFriendlyHUDInitialized(self);
 
     `Log("[FriendlyHUD] Initialized");
 }
 
-function bool CheckReplacement(Actor Other) 
+delegate OnFriendlyHUDInitialized(FriendlyHUDMutator Mut);
+
+/*function bool CheckReplacement(Actor Other) 
 {
 	local KFPawn_AutoTurret Turret;
 	
@@ -129,4 +135,17 @@ function bool CheckReplacement(Actor Other)
 	}
 		
     return Super.CheckReplacement(Other);
+}*/
+
+simulated function WriteToChat(string Message, string HexColor)
+{
+    if (KFPC.MyGFxManager.PartyWidget != None)
+    {
+        KFPC.MyGFxManager.PartyWidget.ReceiveMessage(Message, HexColor);
+    }
+
+    if (HUD != None && HUD.HUDMovie != None && HUD.HUDMovie.HudChatBox != None)
+    {
+        HUD.HUDMovie.HudChatBox.AddChatMessage(Message, HexColor);
+    }
 }

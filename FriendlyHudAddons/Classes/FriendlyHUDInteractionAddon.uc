@@ -284,7 +284,7 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 			KFPRI.Avatar = FindAvatar(KFPRI.UniqueId);
 	}
 
-	if( !OverridePlayerNameDraw(self, KFPRI, HUD, Canvas, PlayerNamePosX, PlayerNamePosY, PlayerName, TextFontRenderInfo, ItemInfo) )
+	if( !OverridePlayerNameDraw(self, KFPRI, HUD, Canvas, PlayerNamePosX, PlayerNamePosY, PlayerName, TextFontRenderInfo, ItemInfo, IsFriend) )
 	{
 		// Draw drop shadow behind the player name
 		SetCanvasColor(Canvas, HUDConfig.ShadowColor);
@@ -725,7 +725,7 @@ delegate int SortKFPRIByRegenHealth(PRIEntry A, PRIEntry B)
     return Super.SortKFPRIByRegenHealth(A, B);
 }
 
-delegate bool OverridePlayerNameDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float PlayerNamePosX, float PlayerNamePosY, string PlayerName, FontRenderInfo TextFontRenderInfo, const PlayerItemInfo ItemInfo)
+delegate bool OverridePlayerNameDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float PlayerNamePosX, float PlayerNamePosY, string PlayerName, FontRenderInfo TextFontRenderInfo, const PlayerItemInfo ItemInfo, optional byte IsFriend)
 {
 	return false;
 }

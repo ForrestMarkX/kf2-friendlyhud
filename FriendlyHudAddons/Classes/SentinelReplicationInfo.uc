@@ -1,7 +1,7 @@
 class SentinelReplicationInfo extends KFPlayerReplicationInfo;
 
 var KFPawn_AutoTurret TurretOwner;
-var PlayerController DummyController;
+var KFAIController DummyController;
 
 replication
 {
@@ -11,7 +11,7 @@ replication
 
 simulated function PostBeginPlay()
 {
-	local Mutator Mut;
+	local FriendlyHudAddons Mut;
 	
     Super.PostBeginPlay();
 	
@@ -19,7 +19,7 @@ simulated function PostBeginPlay()
 	
 	if( Role == ROLE_Authority )
 	{
-		DummyController = Spawn(class'PlayerController');
+		DummyController = Spawn(class'KFAIController');
 		DummyController.SetTickIsDisabled(true);
 		DummyController.bIsPlayer = false;
 		DummyController.Role = ROLE_Authority;
@@ -27,11 +27,8 @@ simulated function PostBeginPlay()
 		DummyController.Pawn = TurretOwner;
 		DummyController.PlayerReplicationInfo = self;
 		
-		for( Mut=WorldInfo.Game.BaseMutator; Mut!=None; Mut=Mut.NextMutator )
-		{
-			if( FriendlyHudAddons(Mut) != None )
-				FriendlyHudAddons(Mut).NotifyLogin(DummyController);
-		}
+		foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
+			Mut.NotifyLogin(DummyController);
 	}
 }
 
@@ -44,17 +41,14 @@ simulated function Tick(float DT)
 
 simulated function Destroyed()
 {
-	local Mutator Mut;
+	local FriendlyHudAddons Mut;
 	
 	Super.Destroyed();
 	
 	if( Role == ROLE_Authority && DummyController != None )
 	{
-		for( Mut=WorldInfo.Game.BaseMutator; Mut!=None; Mut=Mut.NextMutator )
-		{
-			if( FriendlyHudAddons(Mut) != None )
-				FriendlyHudAddons(Mut).NotifyLogout(DummyController);
-		}
+		foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
+			Mut.NotifyLogout(DummyController);
 			
 		if( DummyController != None )
 			DummyController.Destroy();
