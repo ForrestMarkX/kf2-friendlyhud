@@ -156,6 +156,8 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 
     ItemInfo.RepInfo.GetPlayerInfo(ItemInfo.RepIndex, KFPRI, PlayerName, ArmorInfo, HealthInfo, HealthToRegen, BuffInfo, IsFriend, PlayerState);
 
+	PreDrawPlayerItem(self, Canvas, KFPRI, HUD);
+
 	SRI = SentinelReplicationInfo(KFPRI);
 
     TotalRegenRatio = HealthInfo.MaxValue > 0 ? FMin(FMax(float(HealthToRegen) / float(HealthInfo.MaxValue), 0.f), 1.f) : 0.f;
@@ -723,6 +725,11 @@ delegate int SortKFPRIByRegenHealth(PRIEntry A, PRIEntry B)
     else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
 	
     return Super.SortKFPRIByRegenHealth(A, B);
+}
+
+delegate PreDrawPlayerItem(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
+{
+	return;
 }
 
 delegate bool OverridePlayerNameDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float PlayerNamePosX, float PlayerNamePosY, string PlayerName, FontRenderInfo TextFontRenderInfo, const PlayerItemInfo ItemInfo, optional byte IsFriend)
