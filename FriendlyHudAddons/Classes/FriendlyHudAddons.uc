@@ -122,7 +122,7 @@ simulated function InitializeDeferred()
 
 delegate OnFriendlyHUDInitialized(FriendlyHUDMutator Mut);
 
-/*function bool CheckReplacement(Actor Other) 
+function bool CheckReplacement(Actor Other) 
 {
 	local KFPawn_AutoTurret Turret;
 	
@@ -135,7 +135,7 @@ delegate OnFriendlyHUDInitialized(FriendlyHUDMutator Mut);
 	}
 		
     return Super.CheckReplacement(Other);
-}*/
+}
 
 simulated function WriteToChat(string Message, string HexColor)
 {
