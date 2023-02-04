@@ -682,7 +682,7 @@ delegate Texture2D GetPrestigeIcon(FriendlyHUDInteractionAddon FHUDInfo, HUD HUD
 	return KFPRI.CurrentPerkClass.default.PrestigeIcons[PrestigeLevel - 1];
 }
 
-delegate int SortKFPRI(PRIEntry A, PRIEntry B)
+/*delegate int SortKFPRI(PRIEntry A, PRIEntry B)
 {
     if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
     else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
@@ -725,7 +725,7 @@ delegate int SortKFPRIByRegenHealth(PRIEntry A, PRIEntry B)
     else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
 	
     return Super.SortKFPRIByRegenHealth(A, B);
-}
+}*/
 
 delegate PreDrawPlayerItem(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
 {
