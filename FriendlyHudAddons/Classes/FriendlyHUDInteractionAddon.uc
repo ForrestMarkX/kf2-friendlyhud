@@ -634,11 +634,11 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
     {
 		PrestigeIcon = GetPrestigeIcon(self, HUD, KFPRI, PrestigeLevel);
 		
-        Canvas.DrawTile(PrestigeIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, 256, 256);
+        Canvas.DrawTile(PrestigeIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
         Canvas.SetPos(PlayerIconPosX + (R.PlayerIconSize * (1 - PrestigeIconScale)) / 2.f, PlayerIconPosY + R.PlayerIconSize * 0.05f);
-        Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * PrestigeIconScale, R.PlayerIconSize * PrestigeIconScale, 0, 0, 256, 256);
+        Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * PrestigeIconScale, R.PlayerIconSize * PrestigeIconScale, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
     }
-    else Canvas.DrawTile(PlayerIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, 256, 256);
+    else Canvas.DrawTile(PlayerIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
 }
 
 function bool IsPRIRenderable(FriendlyHUDReplicationInfo RepInfo, int RepIndex)
@@ -681,51 +681,6 @@ delegate Texture2D GetPrestigeIcon(FriendlyHUDInteractionAddon FHUDInfo, HUD HUD
 {
 	return KFPRI.CurrentPerkClass.default.PrestigeIcons[PrestigeLevel - 1];
 }
-
-/*delegate int SortKFPRI(PRIEntry A, PRIEntry B)
-{
-    if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
-    else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
-    else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
-	
-    return Super.SortKFPRI(A, B);
-}
-
-delegate int SortKFPRIByHealthDescending(PRIEntry A, PRIEntry B)
-{
-    if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
-    else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
-    else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
-	
-    return Super.SortKFPRIByHealthDescending(A, B);
-}
-
-delegate int SortKFPRIByHealth(PRIEntry A, PRIEntry B)
-{
-    if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
-    else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
-    else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
-	
-    return Super.SortKFPRIByHealth(A, B);
-}
-
-delegate int SortKFPRIByRegenHealthDescending(PRIEntry A, PRIEntry B)
-{
-    if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
-    else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
-    else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
-	
-    return Super.SortKFPRIByRegenHealthDescending(A, B);
-}
-
-delegate int SortKFPRIByRegenHealth(PRIEntry A, PRIEntry B)
-{
-    if( SentinelReplicationInfo(A.KFPRI) != None && SentinelReplicationInfo(B.KFPRI) != None ) return 0;
-    else if( SentinelReplicationInfo(A.KFPRI) != None ) return -1;
-    else if( SentinelReplicationInfo(B.KFPRI) != None ) return 1;
-	
-    return Super.SortKFPRIByRegenHealth(A, B);
-}*/
 
 delegate PreDrawPlayerItem(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
 {

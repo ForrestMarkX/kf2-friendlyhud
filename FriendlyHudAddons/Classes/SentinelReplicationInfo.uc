@@ -1,7 +1,7 @@
 class SentinelReplicationInfo extends KFPlayerReplicationInfo;
 
 var KFPawn_AutoTurret TurretOwner;
-var KFAIController DummyController;
+var SentinelController DummyController;
 
 replication
 {
@@ -11,24 +11,20 @@ replication
 
 simulated function PostBeginPlay()
 {
-	local FriendlyHudAddons Mut;
-	
+    local FriendlyHudAddons Mut;
+    
     Super.PostBeginPlay();
 	
     TurretOwner = KFPawn_AutoTurret(Owner);
 	
 	if( Role == ROLE_Authority )
 	{
-		DummyController = Spawn(class'KFAIController');
-		DummyController.SetTickIsDisabled(true);
-		DummyController.bIsPlayer = false;
-		DummyController.Role = ROLE_Authority;
-		DummyController.RemoteRole = ROLE_None;
-		DummyController.Pawn = TurretOwner;
-		DummyController.PlayerReplicationInfo = self;
-		
-		foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
-			Mut.NotifyLogin(DummyController);
+		DummyController = Spawn(class'SentinelController');
+        DummyController.PlayerReplicationInfo = self;
+        KFGameInfo(WorldInfo.Game).SetTeam(DummyController, KFGameInfo(WorldInfo.Game).Teams[0]);
+        
+        foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
+            Mut.NotifyLogin(DummyController);
 	}
 }
 
@@ -41,18 +37,18 @@ simulated function Tick(float DT)
 
 simulated function Destroyed()
 {
-	local FriendlyHudAddons Mut;
-	
+    local FriendlyHudAddons Mut;
+    
 	Super.Destroyed();
 	
 	if( Role == ROLE_Authority && DummyController != None )
-	{
-		foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
-			Mut.NotifyLogout(DummyController);
-			
-		if( DummyController != None )
-			DummyController.Destroy();
-	}
+    {
+        foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)
+            Mut.NotifyLogout(DummyController);
+            
+        DummyController.PlayerReplicationInfo = None;
+        DummyController.Destroy();
+    }
 }
 
 simulated function bool ShouldBroadCastWelcomeMessage(optional bool bExiting)
@@ -70,15 +66,8 @@ simulated function Texture2D GetCurrentIconToDisplay()
 	return Texture2D'ui_firemodes_tex.UI_FireModeSelect_Drone';
 }
 
-simulated function byte GetTeamNum()
-{
-	return 255;
-}
-
 defaultproperties
 {
 	bIsInactive=true
-	bTickIsDisabled=true
-	bOnlySpectator=true
     Avatar=None
 }

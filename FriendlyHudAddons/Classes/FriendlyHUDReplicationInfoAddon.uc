@@ -2,20 +2,16 @@ class FriendlyHUDReplicationInfoAddon extends FriendlyHUDReplicationInfo;
 
 function UpdateInfo()
 {
-    local name GameStateName;
     local KFPawn_Human KFPH;
     local KFPlayerReplicationInfo KFPRI;
     local float DmgBoostModifier, DmgResistanceModifier;
     local int I;
     local bool ShouldSimulateReplication;
 	local KFPawn_AutoTurret Turret;
+    local KFGameReplicationInfo KFGRI;
+    
+    KFGRI = KFGameReplicationInfo(WorldInfo.GRI);
 
-    // Make sure our mutator was initialized
-    if (FHUDMutator.MyKFGI != None)
-    {
-        GameStateName = FHUDMutator.MYKFGI.GetStateName();
-    }
-	
     for (I = 0; I < REP_INFO_COUNT; I++)
     {
         if (PCArray[I] == None) continue;
@@ -29,7 +25,7 @@ function UpdateInfo()
 
         ShouldSimulateReplication = KFPRIArray[I] == None && WorldInfo.NetMode != NM_DedicatedServer;
         KFPRIArray[I] = KFPRI;
-
+        
         // Replicated events don't work in singleplayer, so we need to simulate it here
         if (ShouldSimulateReplication)
         {
@@ -38,21 +34,31 @@ function UpdateInfo()
 
         if (KFPRI != None)
         {
-            // HasHadInitialSpawn() doesn't work on bots
-            HasSpawnedArray[I] = (KFAIController(PCArray[I]) != None || KFPRI.HasHadInitialSpawn()) ? 1 : 0;
-
-            if (GameStateName == 'PendingMatch')
+            if( Turret != None )
             {
-                PlayerStateArray[I] = KFPRI.bReadyToPlay ? PRS_Ready : PRS_NotReady;
-            }
-            else if (GameStateName == 'TraderOpen' && FHUDMutator.CDReadyEnabled)
-            {
-                PlayerStateArray[I] = CDPlayerReadyArray[I] != 0 ? PRS_Ready : PRS_NotReady;
-            }
-            else
-            {
+                HasSpawnedArray[I] = 1;
                 PlayerStateArray[I] = PRS_Default;
                 CDPlayerReadyArray[I] = 0;
+            }
+            else 
+            {
+                // HasHadInitialSpawn() doesn't work on bots
+                HasSpawnedArray[I] = (KFAIController(PCArray[I]) != None || KFPRI.HasHadInitialSpawn()) ? 1 : 0;
+
+                // StateName was always None for me for some reason so lets just use the GRI values - FMX
+                if (!KFGRI.bMatchHasBegun)
+                {
+                    PlayerStateArray[I] = KFPRI.bReadyToPlay ? PRS_Ready : PRS_NotReady;
+                }
+                else if (KFGRI.bTraderIsOpen && FHUDMutator.CDReadyEnabled)
+                {
+                    PlayerStateArray[I] = CDPlayerReadyArray[I] != 0 ? PRS_Ready : PRS_NotReady;
+                }
+                else
+                {
+                    PlayerStateArray[I] = PRS_Default;
+                    CDPlayerReadyArray[I] = 0;
+                }
             }
         }
 
@@ -99,8 +105,8 @@ function UpdateInfo()
 function NotifyLogin(Controller C)
 {
     local int I;
-
-    if (PlayerController(C) == None && (KFPawn_Human(C.Pawn) == None && KFPawn_AutoTurret(C.Pawn) == None)) return;
+    
+    if (PlayerController(C) == None) return;
 
     // Find empty spot
     for (I = 0; I < REP_INFO_COUNT; I++)
@@ -136,8 +142,8 @@ function NotifyLogout(Controller C)
 {
     local int I;
 
-    if (PlayerController(C) == None && (KFPawn_Human(C.Pawn) == None && KFPawn_AutoTurret(C.Pawn) == None)) return;
-
+    if (PlayerController(C) == None) return;
+    
     for (I = 0; I < REP_INFO_COUNT; I++)
     {
         if (PCArray[I] == C)
