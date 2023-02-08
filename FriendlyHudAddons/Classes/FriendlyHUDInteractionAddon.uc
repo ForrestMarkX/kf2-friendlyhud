@@ -1,5 +1,8 @@
 class FriendlyHUDInteractionAddon extends FriendlyHUDInteraction;
 
+var int CurrentVoiceCommsHighlightAlpha;
+var int CurrentAlphaDelta;
+
 function UpdateRuntimeVars(optional Canvas Canvas)
 {
     local float LineHeightOffset;
@@ -602,6 +605,7 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
     local Texture2D PlayerIcon, PrestigeIcon;
     local byte PrestigeLevel;
     local bool IsPlayerIcon;
+    local Color Clr;
 
     KFPRI = ItemInfo.KFPRI;
 
@@ -638,7 +642,28 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
         Canvas.SetPos(PlayerIconPosX + (R.PlayerIconSize * (1 - PrestigeIconScale)) / 2.f, PlayerIconPosY + R.PlayerIconSize * 0.05f);
         Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * PrestigeIconScale, R.PlayerIconSize * PrestigeIconScale, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
     }
-    else Canvas.DrawTile(PlayerIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
+    else
+    {
+        if( KFPRI.CurrentVoiceCommsRequest != VCT_NONE )
+        {
+            Clr = Canvas.DrawColor;
+            
+            if( CurrentVoiceCommsHighlightAlpha >= 255 )
+                CurrentAlphaDelta = -2;
+            else if( CurrentVoiceCommsHighlightAlpha <= 0 )
+                CurrentAlphaDelta = 2;
+
+            CurrentVoiceCommsHighlightAlpha += CurrentAlphaDelta;
+
+            Canvas.DrawColor = HUD.WhiteColor;
+            Canvas.DrawColor.A = Clamp(CurrentVoiceCommsHighlightAlpha, 0, 255);
+            Canvas.DrawTile(HUD.IconHighLightTexture, R.PlayerIconSize, R.PlayerIconSize, 0, 0, HUD.IconHighLightTexture.SizeX, HUD.IconHighLightTexture.SizeY);
+            Canvas.DrawColor = Clr;
+			Canvas.SetPos(PlayerIconPosX + (R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale / 2), PlayerIconPosY + (R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale / 2));
+            Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, 0, 0, 256, 256);
+        }
+        else Canvas.DrawTile(PlayerIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
+    }
 }
 
 function bool IsPRIRenderable(FriendlyHUDReplicationInfo RepInfo, int RepIndex)
