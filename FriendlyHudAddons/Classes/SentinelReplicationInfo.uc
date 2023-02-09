@@ -21,6 +21,7 @@ simulated function PostBeginPlay()
 	{
 		DummyController = Spawn(class'SentinelController');
         DummyController.PlayerReplicationInfo = self;
+        DummyController.Pawn = TurretOwner;
         KFGameInfo(WorldInfo.Game).SetTeam(DummyController, KFGameInfo(WorldInfo.Game).Teams[0]);
         
         foreach WorldInfo.DynamicActors(class'FriendlyHudAddons', Mut)

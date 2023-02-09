@@ -106,7 +106,7 @@ function NotifyLogin(Controller C)
 {
     local int I;
     
-    if (PlayerController(C) == None) return;
+    if (PlayerController(C) == None && (KFPawn_Human(C.Pawn) == None && KFPawn_AutoTurret(C.Pawn) == None)) return;
 
     // Find empty spot
     for (I = 0; I < REP_INFO_COUNT; I++)
@@ -142,7 +142,7 @@ function NotifyLogout(Controller C)
 {
     local int I;
 
-    if (PlayerController(C) == None) return;
+    if (PlayerController(C) == None && (KFPawn_Human(C.Pawn) == None && KFPawn_AutoTurret(C.Pawn) == None)) return;
     
     for (I = 0; I < REP_INFO_COUNT; I++)
     {
