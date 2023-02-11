@@ -3,6 +3,13 @@ class FriendlyHUDInteractionAddon extends FriendlyHUDInteraction;
 var int CurrentVoiceCommsHighlightAlpha;
 var int CurrentAlphaDelta;
 
+event PostRender(Canvas Canvas)
+{
+    if( ForceDisableHUD(self, Canvas) )
+        return;
+    Super.PostRender(Canvas);
+}
+
 function UpdateRuntimeVars(optional Canvas Canvas)
 {
     local float LineHeightOffset;
@@ -735,6 +742,11 @@ delegate Font GetCanvasFont(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterfa
 delegate float GetCanvasFontScale(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterface)
 {
 	return class'KFGameEngine'.static.GetKFFontScale();
+}
+
+delegate bool ForceDisableHUD(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas)
+{
+	return false;
 }
 
 static final function float Approach( float Cur, float Target, float Inc )
