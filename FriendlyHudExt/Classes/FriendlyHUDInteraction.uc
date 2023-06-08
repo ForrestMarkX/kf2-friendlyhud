@@ -594,7 +594,7 @@ function UpdatePRIArray()
         {
             if (RepInfo.KFPRIArray[I] == None) continue;
 
-            if (RepInfo.KFPRIArray[I].Team.Class != class'KFTeamInfo_Human') continue;
+            if (RepInfo.KFPRIArray[I].Team == None || RepInfo.KFPRIArray[I].Team.Class != class'KFTeamInfo_Human') continue;
 
             KFPH = RepInfo.KFPHArray[I];
 

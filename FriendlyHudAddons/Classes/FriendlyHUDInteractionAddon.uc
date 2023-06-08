@@ -709,6 +709,74 @@ function bool IsPRIRenderable(FriendlyHUDReplicationInfo RepInfo, int RepIndex)
     return true;
 }
 
+function UpdatePRIArray()
+{
+    local FriendlyHUDReplicationInfo RepInfo;
+    local KFPawn_Human KFPH;
+    local PRIEntry CurrentPRIEntry;
+    local int I, ArrayIndex;
+
+    if (HUDConfig.DisableHUD) return;
+
+    SortedKFPRIArray.Length = 0;
+    RepInfo = FHUDMutator.RepInfo;
+    while (RepInfo != None)
+    {
+        for (I = 0; I < class'FriendlyHUD.FriendlyHUDReplicationInfo'.const.REP_INFO_COUNT; I++)
+        {
+            if (RepInfo.KFPRIArray[I] == None) continue;
+
+            if (RepInfo.KFPRIArray[I].Team == None || RepInfo.KFPRIArray[I].Team.Class != class'KFTeamInfo_Human') continue;
+
+            KFPH = RepInfo.KFPHArray[I];
+
+            CurrentPRIEntry.RepIndex = I;
+            CurrentPRIEntry.RepInfo = RepInfo;
+            CurrentPRIEntry.KFPRI = RepInfo.KFPRIArray[I];
+            CurrentPRIEntry.KFPH = KFPH;
+            CurrentPRIEntry.Priority = RepInfo.PriorityArray[I];
+            CurrentPRIEntry.HealthRatio = KFPH != None
+                ? float(KFPH.Health) / float(KFPH.HealthMax)
+                : 0.f;
+            CurrentPRIEntry.RegenHealthRatio = KFPH != None
+                ? float(RepInfo.RegenHealthArray[I]) / float(KFPH.HealthMax)
+                : 0.f;
+
+            SortedKFPRIArray[ArrayIndex] = CurrentPRIEntry;
+
+            ArrayIndex++;
+        }
+        RepInfo = RepInfo.NextRepInfo;
+    }
+
+    // Don't use any custom sort logic when in manual mode
+    if (ManualModeActive)
+    {
+        SortedKFPRIArray.Sort(SortKFPRI);
+        return;
+    }
+
+    switch (HUDConfig.SortStrategy)
+    {
+        case 1:
+            SortedKFPRIArray.Sort(SortKFPRIByHealthDescending);
+            break;
+        case 2:
+            SortedKFPRIArray.Sort(SortKFPRIByHealth);
+            break;
+        case 3:
+            SortedKFPRIArray.Sort(SortKFPRIByRegenHealthDescending);
+            break;
+        case 4:
+            SortedKFPRIArray.Sort(SortKFPRIByRegenHealth);
+            break;
+        case 0:
+        default:
+            SortedKFPRIArray.Sort(SortKFPRI);
+            break;
+    }
+}
+
 delegate Texture2D GetPrestigeIcon(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDInterface, KFPlayerReplicationInfo KFPRI, byte PrestigeLevel)
 {
 	return KFPRI.CurrentPerkClass.default.PrestigeIcons[PrestigeLevel - 1];
