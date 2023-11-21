@@ -146,8 +146,6 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
     local float PlayerNamePosX, PlayerNamePosY;
     local float FriendIconPosX, FriendIconPosY;
     local float PlayerIconPosX, PlayerIconPosY;
-    local float AvatarIconPosX, AvatarIconPosY;
-    local float ChatIconPosX, ChatIconPosY;
     local FontRenderInfo TextFontRenderInfo;
     local float ArmorRatio, HealthRatio, RegenRatio, TotalRegenRatio;
     local KFPlayerReplicationInfo KFPRI;
@@ -184,7 +182,7 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
     // If we're in select mode, bypass all visibility checks
     if (ManualModeActive || SRI != None) { }
     // Only apply render restrictions if we don't have a special state
-    else if (PlayerState == PRS_Default || !FHUDMutator.CDReadyEnabled)
+    else if (PlayerState == PRS_Default || !FHUD.CDReadyEnabled)
     {
         // Don't render if CD trader-time only mode is enabled
         if (HUDConfig.CDOnlyTraderTime) return false;
@@ -267,33 +265,28 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
     }
 	
 	if( GetPlayerIsChatting(self, KFPRI, HUD) )
-	{
-		ChatIconPosX = PlayerNamePosX;
-		ChatIconPosY = PosY + FMax(R.LineHeight - R.TextHeight, 0);
-		
-		DrawPlayerChatIcon(self, KFPRI, HUD, Canvas, ChatIconPosX, ChatIconPosY, PlayerNamePosX);
-	}
+		DrawPlayerChatIcon(self, KFPRI, HUD, Canvas, PlayerNamePosX, FriendIconPosY, PlayerNamePosX);
 	
-	if( KFPRI.Avatar != None )
+	if( AllowAvatarDrawing(self, KFPRI, HUD, Canvas, TextFontRenderInfo, ItemInfo) )
 	{
-		AvatarIconPosX = PlayerNamePosX;
-		AvatarIconPosY = PosY + FMax(R.LineHeight - R.TextHeight, 0);
-	
-		SetCanvasColor(Canvas, HUDConfig.ShadowColor);
-        Canvas.SetPos(AvatarIconPosX, AvatarIconPosY + 1);
-        Canvas.DrawTile(KFPRI.Avatar, R.TextHeight, R.TextHeight, 0, 0, KFPRI.Avatar.SizeX, KFPRI.Avatar.SizeY);
-		
-		SetCanvasColor(Canvas, HUD.WhiteColor);
-        Canvas.SetPos(AvatarIconPosX, AvatarIconPosY);
-        Canvas.DrawTile(KFPRI.Avatar, R.TextHeight, R.TextHeight, 0, 0, KFPRI.Avatar.SizeX, KFPRI.Avatar.SizeY);
-		
-		PlayerNamePosX += R.TextHeight + R.FriendIconGap;
-	}
-	else
-	{
-		// Try to obtain avatar.
-		if( !KFPRI.bBot )
-			KFPRI.Avatar = FindAvatar(KFPRI.UniqueId);
+		if( KFPRI.Avatar != None )
+		{
+			SetCanvasColor(Canvas, HUDConfig.ShadowColor);
+			Canvas.SetPos(PlayerNamePosX, FriendIconPosY + 1);
+			Canvas.DrawTile(KFPRI.Avatar, R.FriendIconSize, R.FriendIconSize, 0, 0, KFPRI.Avatar.SizeX, KFPRI.Avatar.SizeY);
+			
+			SetCanvasColor(Canvas, HUD.WhiteColor);
+			Canvas.SetPos(PlayerNamePosX, FriendIconPosY);
+			Canvas.DrawTile(KFPRI.Avatar, R.FriendIconSize, R.FriendIconSize, 0, 0, KFPRI.Avatar.SizeX, KFPRI.Avatar.SizeY);
+			
+			PlayerNamePosX += R.FriendIconSize + R.FriendIconGap;
+		}
+		else
+		{
+			// Try to obtain avatar.
+			if( !KFPRI.bBot )
+				KFPRI.Avatar = FindAvatar(KFPRI.UniqueId);
+		}
 	}
 
 	if( !OverridePlayerNameDraw(self, KFPRI, HUD, Canvas, PlayerNamePosX, PlayerNamePosY, PlayerName, TextFontRenderInfo, ItemInfo, IsFriend) )
@@ -306,7 +299,7 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 		// Draw player name
 		SetCanvasColor(
 			Canvas,
-			((IsFriend != 0 || FHUDMutator.ForceShowAsFriend) && HUDConfig.FriendNameColorEnabled)
+			((IsFriend != 0 || FHUD.ForceShowAsFriend) && HUDConfig.FriendNameColorEnabled)
 				? HUDConfig.FriendNameColor
 				: HUDConfig.NameColor
 		);
@@ -613,7 +606,7 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
     local byte PrestigeLevel;
     local bool IsPlayerIcon;
     local Color Clr;
-
+	
     KFPRI = ItemInfo.KFPRI;
 
     Canvas.SetPos(PlayerIconPosX, PlayerIconPosY);
@@ -640,6 +633,9 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
 
 	IsPlayerIcon = KFPRI.CurrentVoiceCommsRequest == VCT_NONE && KFPRI.CurrentPerkClass != None;
     PlayerIcon = KFPRI.GetCurrentIconToDisplay();
+	
+	if( OverridePlayerIconDraw(self, KFPRI, HUD, Canvas, PlayerIconPosX, PlayerIconPosY, ItemInfo, PlayerIcon, PrestigeLevel, IsPlayerIcon) )
+		return;
 
     if( IsPlayerIcon && PrestigeLevel > 0 )
     {
@@ -719,7 +715,7 @@ function UpdatePRIArray()
     if (HUDConfig.DisableHUD) return;
 
     SortedKFPRIArray.Length = 0;
-    RepInfo = FHUDMutator.RepInfo;
+    RepInfo = FHUD.RepInfo;
     while (RepInfo != None)
     {
         for (I = 0; I < class'FriendlyHUD.FriendlyHUDReplicationInfo'.const.REP_INFO_COUNT; I++)
@@ -792,6 +788,11 @@ delegate bool OverridePlayerNameDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPla
 	return false;
 }
 
+delegate bool AllowAvatarDrawing(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, FontRenderInfo TextFontRenderInfo, const PlayerItemInfo ItemInfo)
+{
+	return true;
+}
+
 delegate bool GetPlayerIsChatting(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
 {
 	return false;
@@ -813,6 +814,11 @@ delegate float GetCanvasFontScale(FriendlyHUDInteractionAddon FHUDInfo, HUD HUDI
 }
 
 delegate bool ForceDisableHUD(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas)
+{
+	return false;
+}
+
+delegate bool OverridePlayerIconDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float PlayerIconPosX, float PlayerIconPosY, const PlayerItemInfo ItemInfo, out Texture2D Icon, out byte PrestigeLevel, bool IsPlayerIcon)
 {
 	return false;
 }

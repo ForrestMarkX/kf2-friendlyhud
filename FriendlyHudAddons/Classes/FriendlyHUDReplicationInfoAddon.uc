@@ -4,7 +4,6 @@ function UpdateInfo()
 {
     local KFPawn_Human KFPH;
     local KFPlayerReplicationInfo KFPRI;
-    local float DmgBoostModifier, DmgResistanceModifier;
     local int I;
     local bool ShouldSimulateReplication;
 	local KFPawn_AutoTurret Turret;
@@ -50,7 +49,7 @@ function UpdateInfo()
                 {
                     PlayerStateArray[I] = KFPRI.bReadyToPlay ? PRS_Ready : PRS_NotReady;
                 }
-                else if (KFGRI.bTraderIsOpen && FHUDMutator.CDReadyEnabled)
+                else if (KFGRI.bTraderIsOpen && FHUD.CDReadyEnabled)
                 {
                     PlayerStateArray[I] = CDPlayerReadyArray[I] != 0 ? PRS_Ready : PRS_NotReady;
                 }
@@ -72,13 +71,7 @@ function UpdateInfo()
             ArmorInfoArray[I].Value = KFPH.Armor;
             ArmorInfoArray[I].MaxValue = KFPH.MaxArmor;
 
-            // Update med buffs
-            DmgBoostModifier = (KFPH.GetHealingDamageBoostModifier() - 1) * 100;
-            DmgResistanceModifier = (1 - KFPH.GetHealingShieldModifier()) * 100;
-
-            MedBuffArray[I].DamageBoost = Round(DmgBoostModifier / class'KFPerk_FieldMedic'.static.GetHealingDamageBoost());
-            MedBuffArray[I].DamageResistance = Round(DmgResistanceModifier / class'KFPerk_FieldMedic'.static.GetHealingShield());
-            UpdateSpeedBoost(I);
+            UpdateBuffs(I);
 
             if (KFPH.Health > 0)
             {
@@ -129,8 +122,8 @@ function NotifyLogin(Controller C)
     // No empty spot, pass to NextRepInfo
     if (NextRepInfo == None)
     {
-        NextRepInfo = Spawn(FriendlyHudAddons(FHUDMutator).ReplicationInfoClass, Owner);
-        NextRepInfo.FHUDMutator = FHUDMutator;
+        NextRepInfo = Spawn(FHUDAddons(FHUD).ReplicationInfoClass, Owner);
+        NextRepInfo.FHUD = FHUD;
         NextRepInfo.HUDConfig = HUDConfig;
         NextRepInfo.PreviousRepInfo = Self;
     }
