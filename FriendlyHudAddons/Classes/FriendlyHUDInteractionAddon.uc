@@ -326,7 +326,8 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 	else
 	{
 		// Draw armor bar
-		DrawBar(
+		DrawBarAlt(
+            KFPRI,
 			Canvas,
 			BT_Armor,
 			ArmorRatio,
@@ -339,7 +340,8 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 		);
 
 		// Draw health bar
-		DrawBar(
+		DrawBarAlt(
+            KFPRI,
 			Canvas,
 			BT_Health,
 			HealthRatio,
@@ -350,6 +352,8 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 			PreviousBarWidth,
 			PreviousBarHeight
 		);
+        
+        DrawAdditionBarDecorations(self, KFPRI, HUD, Canvas, PosX + R.PlayerIconSize + R.PlayerIconGap, PosY + PreviousBarHeight + R.BarGap + R.LineHeight + R.NameMarginY, PreviousBarWidth, PreviousBarHeight);
 	}
 
     if (ManualModeActive)
@@ -599,6 +603,221 @@ function DrawBarEx(
     }
 }
 
+function DrawBarAlt(
+    KFPlayerReplicationInfo KFPRI,
+    Canvas Canvas,
+    EBarType BarType,
+    float BarRatio,
+    float BufferRatio,
+    float TotalBufferRatio,
+    float PosX,
+    float PosY,
+    out float TotalWidth,
+    out float TotalHeight
+)
+{
+    local int BlockCount, BlockGap, BlockRoundingStrategy, BarHeight, BlockVerticalAlignment;
+    local array<FriendlyHUDConfig.BlockSizeOverride> BlockSizeOverrides;
+    local array<FriendlyHUDConfig.BlockRatioOverride> BlockRatioOverrides;
+    local array<FriendlyHUDConfig.BlockOffsetOverride> BlockOffsetOverrides;
+    local FriendlyHUDConfig.BlockOutline BlockOutline;
+    local float BlockOutlineH, BlockOutlineV;
+    local float BlockOffsetX, BlockOffsetY;
+    local Color BarColor, BufferColor, BGColor, EmptyBGColor, OverrideHealthColor, OverrideArmorColor;
+    local float CurrentBlockPosX, CurrentBlockPosY, CurrentBlockWidth, CurrentBlockHeight;
+    local float BarBlockWidth, BufferBlockWidth;
+    local float P1, P2;
+    local float BlockRatio;
+    local string DebugRatioText;
+    local float DebugRatioWidth, DebugRatioHeight;
+    local FontRenderInfo DebugTextFontRenderInfo;
+    local int I;
+
+    TotalWidth = 0.f;
+    TotalHeight = 0.f;
+
+    CurrentBlockPosX = PosX;
+    CurrentBlockPosY = PosY;
+
+    if (BarType == BT_Armor)
+    {
+        BlockCount = HUDConfig.ArmorBlockCount;
+        BlockGap = R.ArmorBlockGap;
+        BlockRoundingStrategy = HUDConfig.ArmorBlockRoundingStrategy;
+        BarHeight = R.ArmorBarHeight;
+        BlockVerticalAlignment = HUDConfig.ArmorBlockVerticalAlignment;
+        BlockSizeOverrides = R.ArmorBlockSizeOverrides;
+        BlockRatioOverrides = R.ArmorBlockRatioOverrides;
+        BlockOffsetOverrides = R.ArmorBlockOffsetOverrides;
+        BlockOutline = R.ArmorBlockOutline;
+
+        if (OverridePlayerArmorBarColor(self, KFPRI, HUD, Canvas, OverrideArmorColor))
+        {
+            BarColor = OverrideArmorColor;
+        }
+        else 
+        {
+            BarColor = HUDConfig.ArmorColor;
+        }
+
+        BGColor = HUDConfig.ArmorBGColor;
+        EmptyBGColor = HUDConfig.ArmorEmptyBGColor;
+    }
+    else
+    {
+        BlockCount = HUDConfig.HealthBlockCount;
+        BlockGap = R.HealthBlockGap;
+        BlockRoundingStrategy = HUDConfig.HealthBlockRoundingStrategy;
+        BarHeight = R.HealthBarHeight;
+        BlockVerticalAlignment = HUDConfig.HealthBlockVerticalAlignment;
+        BlockSizeOverrides = R.HealthBlockSizeOverrides;
+        BlockRatioOverrides = R.HealthBlockRatioOverrides;
+        BlockOffsetOverrides = R.HealthBlockOffsetOverrides;
+        BlockOutline = R.HealthBlockOutline;
+
+        BufferColor = HUDConfig.HealthRegenColor;
+
+        BGColor = HUDConfig.HealthBGColor;
+        EmptyBGColor = HUDConfig.HealthEmptyBGColor;
+
+        if (OverridePlayerHealthBarColor(self, KFPRI, HUD, Canvas, OverrideHealthColor))
+            BarColor = OverrideHealthColor;
+        else
+        {
+            if (HUDConfig.DynamicColorsStrategy > 0)
+            {
+                BarColor = GetHealthColor(BarRatio, HUDConfig.HealthColor, HUDConfig.ColorThresholds, HUDConfig.DynamicColorsStrategy > 1);
+            }
+            else
+            {
+                BarColor = HUDConfig.HealthColor;
+            }
+        }
+
+        // Lerp the health regen
+        if (HUDConfig.DynamicRegenColorsStrategy > 0)
+        {
+            BufferColor = HUDConfig.DynamicRegenColorsStrategy != 2
+                // Lerp using the total regen ratio
+                ? GetHealthColor(TotalBufferRatio, HUDConfig.HealthRegenColor, HUDConfig.RegenColorThresholds, HUDConfig.DynamicRegenColorsStrategy > 1)
+                // Lerp using the current health ratio
+                : GetHealthColor(BarRatio, HUDConfig.HealthRegenColor, HUDConfig.RegenColorThresholds, HUDConfig.DynamicRegenColorsStrategy > 1);
+        }
+    }
+
+    // These don't modify the original values because of struct copy semantics
+    BlockOutline.Left *= R.Scale;
+    BlockOutline.Right *= R.Scale;
+    BlockOutline.Top *= R.Scale;
+    BlockOutline.Bottom *= R.Scale;
+    BlockOutlineH = BlockOutline.Left + BlockOutline.Right;
+    BlockOutlineV = BlockOutline.Top + BlockOutline.Bottom;
+
+    for (I = 0; I < BlockCount; I++)
+    {
+        CurrentBlockWidth = BlockSizeOverrides[I].Width;
+        CurrentBlockHeight = BlockSizeOverrides[I].Height;
+
+        TotalWidth += CurrentBlockWidth + BlockGap + BlockOutlineH;
+        TotalHeight = FMax(TotalHeight, CurrentBlockHeight + BlockOutlineV);
+
+        BlockRatio = BlockRatioOverrides[I].Ratio;
+        BlockOffsetX = BlockOffsetOverrides[I].X;
+        BlockOffsetY = BlockOffsetOverrides[I].Y;
+
+        // Handle empty blocks so that we don't get DBZ errors
+        if (BlockRatio <= 0.f)
+        {
+            P1 = 0.f;
+            P2 = 0.f;
+        }
+        else
+        {
+            BarRatio -= BlockRatio;
+            P1 = BarRatio < 0.f
+                // We overflowed, so we have to subtract it
+                ? FMax((BlockRatio + BarRatio) / BlockRatio, 0.f)
+                // We can fill the block up to 100%
+                : 1.f;
+            P2 = 0.f;
+
+            // Once we've "drained" (rendered) all of the primary bar, start draining the buffer
+            if (BufferRatio > 0.f && P1 < 1.f)
+            {
+                // Try to fill the rest of the block (that's not occupied by the first bar)
+                P2 = 1.f - P1;
+                BufferRatio -= P2 * BlockRatio;
+
+                // If we overflowed, subtract the overflow from the buffer (P2)
+                if (BufferRatio < 0.f)
+                {
+                    // BufferRatio is negative, so we need to add it to P2
+                    P2 += BufferRatio / BlockRatio;
+                }
+            }
+        }
+
+        BarBlockWidth = GetInnerBarWidth(BarType, CurrentBlockWidth, P1);
+
+        // Second condition is to prevent rendering over a rounded-up block
+        BufferBlockWidth = (P2 > 0.f && !(BlockRoundingStrategy != 0 && BarBlockWidth >= 1.f))
+            ? GetInnerBarWidth(BarType, CurrentBlockWidth, P2, P1)
+            : 0.f;
+
+        // Adjust the Y pos to align the different block heights
+        switch (BlockVerticalAlignment)
+        {
+            // Alignment: Bottom
+            case 1:
+                CurrentBlockPosY = PosY + BarHeight - (CurrentBlockHeight + BlockOutlineV);
+                break;
+            // Alignment: Middle
+            case 2:
+                CurrentBlockPosY = PosY - ((CurrentBlockHeight + BlockOutlineV) - BarHeight) / 2.f;
+                break;
+            // Alignment: Top
+            case 0:
+            default:
+                CurrentBlockPosY = PosY;
+        }
+
+        // Draw background
+        SetCanvasColor(Canvas, ((BarBlockWidth + BufferBlockWidth) / CurrentBlockWidth) <= HUDConfig.EmptyBlockThreshold ? EmptyBGColor : BGColor);
+        Canvas.SetPos(BlockOffsetX + CurrentBlockPosX, BlockOffsetY + CurrentBlockPosY);
+        Canvas.DrawTile(default.BarBGTexture, CurrentBlockWidth + BlockOutlineH, CurrentBlockHeight + BlockOutlineV, 0, 0, 32, 32);
+
+        CurrentBlockPosX += BlockOutline.Left;
+        CurrentBlockPosY += BlockOutline.Top;
+
+        // Draw main bar
+        if (BarBlockWidth > 0.f)
+        {
+            SetCanvasColor(Canvas, BarColor);
+            Canvas.SetPos(BlockOffsetX + CurrentBlockPosX, BlockOffsetY + CurrentBlockPosY);
+            Canvas.DrawTile(default.BarBGTexture, BarBlockWidth, CurrentBlockHeight, 0, 0, 32, 32);
+        }
+
+        // Draw the buffer after the main bar
+        if (BufferBlockWidth > 0.f)
+        {
+            SetCanvasColor(Canvas, BufferColor);
+            Canvas.SetPos(BlockOffsetX + CurrentBlockPosX + BarBlockWidth, BlockOffsetY + CurrentBlockPosY);
+            Canvas.DrawTile(default.BarBGTexture, BufferBlockWidth, CurrentBlockHeight, 0, 0, 32, 32);
+        }
+
+        if (HUDConfig.DrawDebugRatios)
+        {
+            DebugRatioText = class'FriendlyHUDHelper'.static.FloatToString(P1 * BlockRatio, 2) $ "/" $ class'FriendlyHUDHelper'.static.FloatToString(BlockRatio, 2);
+            SetCanvasColor(Canvas, MakeColor(202, 44, 146, 255));
+            Canvas.TextSize(DebugRatioText, DebugRatioWidth, DebugRatioHeight, 0.6f, 0.6f);
+            Canvas.SetPos(BlockOffsetX + CurrentBlockPosX, BlockOffsetY + CurrentBlockPosY + CurrentBlockHeight - DebugRatioHeight);
+            Canvas.DrawText(DebugRatioText, , 0.6f, 0.6f, DebugTextFontRenderInfo);
+        }
+
+        CurrentBlockPosX += CurrentBlockWidth + BlockOutline.Right + BlockGap;
+    }
+}
+
 function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float PlayerIconPosX, float PlayerIconPosY)
 {
     local KFPlayerReplicationInfo KFPRI;
@@ -628,7 +847,7 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
                 break;
         }
     }
-
+    
     PrestigeLevel = KFPRI.GetActivePerkPrestigeLevel();
 
 	IsPlayerIcon = KFPRI.CurrentVoiceCommsRequest == VCT_NONE && KFPRI.CurrentPerkClass != None;
@@ -663,7 +882,7 @@ function DrawPlayerIcon(Canvas Canvas, const out PlayerItemInfo ItemInfo, float 
             Canvas.DrawTile(HUD.IconHighLightTexture, R.PlayerIconSize, R.PlayerIconSize, 0, 0, HUD.IconHighLightTexture.SizeX, HUD.IconHighLightTexture.SizeY);
             Canvas.DrawColor = Clr;
 			Canvas.SetPos(PlayerIconPosX + (R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale / 2), PlayerIconPosY + (R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale / 2));
-            Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, 0, 0, 256, 256);
+            Canvas.DrawTile(PlayerIcon, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, R.PlayerIconSize * HUD.VoiceCommsIconHighlightScale, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
         }
         else Canvas.DrawTile(PlayerIcon, R.PlayerIconSize, R.PlayerIconSize, 0, 0, PlayerIcon.SizeX, PlayerIcon.SizeY);
     }
@@ -822,6 +1041,18 @@ delegate bool OverridePlayerIconDraw(FriendlyHUDInteractionAddon FHUDInfo, KFPla
 {
 	return false;
 }
+
+delegate bool OverridePlayerHealthBarColor(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, out Color C)
+{
+	return false;
+}
+
+delegate bool OverridePlayerArmorBarColor(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, out Color C)
+{
+	return false;
+}
+
+delegate DrawAdditionBarDecorations(FriendlyHUDInteractionAddon FHUDInfo, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, Canvas Canvas, float BarPosX, float BarPosY, float TotalWidth, float TotalHeight);
 
 static final function float Approach( float Cur, float Target, float Inc )
 {

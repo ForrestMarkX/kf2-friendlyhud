@@ -120,6 +120,36 @@ simulated function InitializeDeferred()
     `Log("[FriendlyHUD] Initialized");
 }
 
+simulated function InitializeHUD()
+{
+    `Log("[FriendlyHUD] Initializing");
+
+    KFPC = KFPlayerController(GetALocalPlayerController());
+
+    if (KFPC == None || RepInfo == None)
+    {
+        SetTimer(0.5f, false, nameof(InitializeHUD));
+        return;
+    }
+
+    `Log("[FriendlyHUD] Found KFPC");
+
+    // Initialize the HUD configuration
+    HUDConfig = new(KFPC) GetHUDConfigClass(self, KFPC);
+    HUDConfig.FHUD = Self;
+    HUDConfig.KFPlayerOwner = KFPC;
+    KFPC.Interactions.AddItem(HUDConfig);
+    HUDConfig.Initialized();
+
+    // Give a chance for other mutators to initialize
+    SetTimer(2.f, false, nameof(InitializeDeferred));
+}
+
+delegate class<FriendlyHUDConfig> GetHUDConfigClass(FHUDAddons FHUD, KFPlayerController PC)
+{
+    return class'FriendlyHUDConfig';
+}
+
 delegate OnFriendlyHUDInitialized(FriendlyHUD Mut);
 
 simulated function WriteToChat(string Message, string HexColor)
