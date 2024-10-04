@@ -140,6 +140,147 @@ function UpdateRuntimeVars(optional Canvas Canvas)
     }
 }
 
+function DrawTeamHealthBars(Canvas Canvas)
+{
+    local FriendlyHUDReplicationInfo RepInfo;
+    local KFPlayerReplicationInfo KFPRI;
+    local ASDisplayInfo StatsDI, GearDI;
+    local float CurrentItemPosX, CurrentItemPosY;
+    local int ItemCount, Column, Row;
+    local PlayerItemInfo ItemInfo;
+    local int I;
+
+    if (HUD.HUDMovie == None || HUD.HUDMovie.PlayerStatusContainer == None || HUD.HUDMovie.PlayerBackpackContainer == None)
+    {
+        return;
+    }
+
+    // If only enabled for medic and we're not a medic, don't render
+    if (KFPerk_FieldMedic(KFPlayerOwner.GetPerk()) == None && HUDConfig.OnlyForMedic) return;
+
+    StatsDI = HUD.HUDMovie.PlayerStatusContainer.GetDisplayInfo();
+    GearDI = HUD.HUDMovie.PlayerBackpackContainer.GetDisplayInfo();
+
+    Canvas.Font = GetCanvasFont(self, HUD);
+
+    // Layout: Bottom
+    if (HUDConfig.Layout == 0)
+    {
+        R.ScreenPosX = HUD.HUDMovie.bIsSpectating
+            ? (StatsDI.x + HUD.HUDMovie.PlayerStatusContainer.GetFloat("width") * 0.1f)
+            : (StatsDI.x + HUD.HUDMovie.PlayerStatusContainer.GetFloat("width"));
+        R.ScreenPosY = Canvas.ClipY + StatsDI.y;
+        // Move down by 30% of the height of the playerstats UI component
+        R.ScreenPosY += (Canvas.ClipY - R.ScreenPosY) * 0.3f;
+
+        // BuffLayout: Left
+        if (HUDConfig.BuffLayout == 1)
+        {
+            // This ensures that we don't overlap (however unlikely) with the playerstats UI
+            R.ScreenPosX += FMax(R.BuffPlayerIconMargin + R.BuffIconSize, 0.f);
+        }
+        // BuffLayout: Top
+        else if (HUDConfig.BuffLayout == 3)
+        {
+            // This ensures that we stay aligned with the top of the playerstats UI
+            R.ScreenPosY += FMax(R.BuffPlayerIconMargin + R.BuffIconSize, 0.f);
+        }
+    }
+    // Layout: Left
+    else if (HUDConfig.Layout == 1)
+    {
+        R.ScreenPosX = StatsDI.x;
+        R.ScreenPosY = HUD.HUDMovie.bIsSpectating
+            ? (Canvas.ClipY + StatsDI.y + HUD.HUDMovie.PlayerStatusContainer.GetFloat("height") * 0.1f)
+            : (Canvas.ClipY + StatsDI.y);
+
+        // BuffLayout: Left
+        if (HUDConfig.BuffLayout == 1)
+        {
+            // This ensures that we don't render off-bounds (too far left)
+            R.ScreenPosX += FMax(R.BuffPlayerIconMargin + R.BuffIconSize, 0.f);
+        }
+    }
+    // Layout: Right
+    else if (HUDConfig.Layout == 2)
+    {
+        R.ScreenPosX = Canvas.ClipX + GearDI.x + HUD.HUDMovie.PlayerBackpackContainer.GetFloat("width") - R.TotalItemWidth;
+        R.ScreenPosY = HUD.HUDMovie.bIsSpectating
+            ? (Canvas.ClipY + GearDI.y + HUD.HUDMovie.PlayerBackpackContainer.GetFloat("height") * 0.9f)
+            : (Canvas.ClipY + GearDI.y);
+
+        // BuffLayout: Left
+        if (HUDConfig.BuffLayout == 1)
+        {
+            // This ensures that we don't render off-bounds (too far right)
+            R.ScreenPosX -= FMax(R.BuffPlayerIconMargin + R.BuffIconSize, 0.f);
+        }
+    }
+
+    R.ScreenPosX += HUDConfig.OffsetX * R.ResScale;
+    R.ScreenPosY += HUDConfig.OffsetY * R.ResScale;
+
+    if (HUDConfig.DrawDebugLines)
+    {
+        Canvas.Draw2DLine(R.ScreenPosX, 0.f, R.ScreenPosX, Canvas.ClipY, default.AxisYLineColor);
+        Canvas.Draw2DLine(0.f, R.ScreenPosY, Canvas.ClipX, R.ScreenPosY, default.AxisXLineColor);
+        Canvas.Draw2DLine(
+            0.f, R.ScreenPosY + HUD.HUDMovie.PlayerStatusContainer.GetFloat("height"),
+            Canvas.ClipX, R.ScreenPosY + HUD.HUDMovie.PlayerStatusContainer.GetFloat("height"),
+            AxisYLineColor
+        );
+    }
+
+    // Abort if the sorted array hasn't been initialized yet
+    if (SortedKFPRIArray.Length == 0) return;
+
+    ItemCount = 0;
+
+    for (I = 0; I < SortedKFPRIArray.Length; I++)
+    {
+        RepInfo = SortedKFPRIArray[I].RepInfo;
+        KFPRI = SortedKFPRIArray[I].KFPRI;
+
+        if (!ManualModeActive && HUDConfig.MaxItemCount >= 0 && ItemCount >= HUDConfig.MaxItemCount) break;
+
+        if (!IsPRIRenderable(RepInfo, SortedKFPRIArray[I].RepIndex)) continue;
+
+        // Layout: row first
+        if (HUDConfig.Flow == 1)
+        {
+            Column = ItemCount % HUDConfig.ItemsPerRow;
+            Row = ItemCount / HUDConfig.ItemsPerRow;
+        }
+        // Layout: column first
+        else
+        {
+            Column = ItemCount / HudConfig.ItemsPerColumn;
+            Row = ItemCount % HudConfig.ItemsPerColumn;
+        }
+
+        CurrentItemPosX = (HUDConfig.Layout == 3)
+            // Right layout flows right-to-left
+            ? (R.ScreenPosX - R.TotalItemWidth * (HUDConfig.ReverseX ? (HUDConfig.ItemsPerRow - 1 - Column) : Column))
+            // Everything else flows left-to-right
+            : (R.ScreenPosX + R.TotalItemWidth * (HUDConfig.ReverseX ? (HUDConfig.ItemsPerRow - 1 - Column) : Column));
+        CurrentItemPosY = (HUDConfig.Layout == 0)
+            // Bottom layout flows down
+            ? (R.ScreenPosY + R.TotalItemHeight * (HUDConfig.ReverseY ? (HudConfig.ItemsPerColumn - 1 - Row) : Row))
+            // Left/right layouts flow up
+            : (R.ScreenPosY - R.TotalItemHeight * (HUDConfig.ReverseY ? (HudConfig.ItemsPerColumn - 1 - Row) : Row));
+
+        ItemInfo.KFPH = RepInfo.KFPHArray[SortedKFPRIArray[I].RepIndex];
+        ItemInfo.KFPRI = KFPRI;
+        ItemInfo.RepInfo = RepInfo;
+        ItemInfo.RepIndex = SortedKFPRIArray[I].RepIndex;
+
+        if (DrawHealthBarItem(Canvas, ItemInfo, CurrentItemPosX, CurrentItemPosY))
+        {
+            ItemCount++;
+        }
+    }
+}
+
 function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo, float PosX, float PosY)
 {
     local float SelectionPosX, SelectionPosY, SelectionWidth, SelectionHeight;
@@ -164,7 +305,7 @@ function bool DrawHealthBarItem(Canvas Canvas, const out PlayerItemInfo ItemInfo
 
     ItemInfo.RepInfo.GetPlayerInfo(ItemInfo.RepIndex, KFPRI, PlayerName, ArmorInfo, HealthInfo, HealthToRegen, BuffInfo, IsFriend, PlayerState);
 
-	PreDrawPlayerItem(self, Canvas, KFPRI, HUD);
+	PreDrawPlayerItem(self, Canvas, KFPRI, HUD, ItemInfo);
 
 	SRI = SentinelReplicationInfo(KFPRI);
 
@@ -997,7 +1138,7 @@ delegate Texture2D GetPrestigeIcon(FriendlyHUDInteractionAddon FHUDInfo, HUD HUD
 	return KFPRI.CurrentPerkClass.default.PrestigeIcons[PrestigeLevel - 1];
 }
 
-delegate PreDrawPlayerItem(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas, KFPlayerReplicationInfo KFPRI, HUD HUDInterface)
+delegate PreDrawPlayerItem(FriendlyHUDInteractionAddon FHUDInfo, Canvas Canvas, KFPlayerReplicationInfo KFPRI, HUD HUDInterface, const PlayerItemInfo ItemInfo)
 {
 	return;
 }
